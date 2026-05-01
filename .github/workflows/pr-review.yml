@@ -1,0 +1,35 @@
+name: PR Agent Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write   # needed for gh pr review to post the verdict
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install anthropic
+
+      - name: Copy PR agent
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/pr_agent.py \
+            -o pr_agent.py 2>/dev/null || cp pr_agent.py pr_agent.py
+
+      - name: Run PR agent review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 pr_agent.py ${{ github.event.pull_request.number }} ${{ github.repository }}
